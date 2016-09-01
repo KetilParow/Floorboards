@@ -1,0 +1,339 @@
+
+<!-- saved from url=(0033)http://parowmaskina2/floorboards/ -->
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="site.css" />
+    <title>Floorboard optimizer</title>
+    </head>
+    
+    
+    
+        
+    <body class="floorbmax-app">
+        <h1>Floorboard optimizer</h1>
+        <p class="app-text">Optimize the usage of floorbard material lenghts</p>
+        <div class="inputs">
+            <fieldset class="cat">
+                <legend>Floor dimensions</legend>
+                <label>Floor dim x (cm):</label><input type="number" id="x" step="1" value="320">
+                <label>Floor dim z (cm):</label><input type="number" id="z" step="1" value="230">
+                <label>Area of floor (m<sup>2</sup>):</label><input type="number" id="area" readonly="readonly" disabled="disabled" value="7.36">
+            </fieldset>
+            <fieldset class="cat">
+                <legend>Board dimensions</legend>
+                <label>Width (mm):</label><input type="number" id="bw" min="30" max="500" step="1" value="192">
+                <label>length (mm):</label><input type="number" id="bl" min="500" max="3000" step="1" value="1207">
+                <label>Specified min length(cm):</label><input type="number" id="minbl" min="20" max="50" step="1" value="30">                
+            </fieldset>
+            <input type="button" value="Calculate this!" id="calc">
+        </div>
+    
+
+<script>
+
+    var settings = {};
+
+    function Board(length) {
+        this.Length = length || settings.boardL;
+    }
+    // function Boards() {
+    //     this.Boards = [];
+    // }
+    function BoardRow(width, boards) {
+        this.Boards = [];
+        this.Width = width || settings.boardW;
+
+        if (boards) {
+            for (var i = 0; i < boards.length; i++) {
+                this.Boards.push(boards[i]);
+            }            
+        }
+        this.Copy = function() {
+            var ret = new BoardRow();
+            this.Boards.forEach(function(e) {ret.AddBoard(e);});
+            ret.Width = this.Width;
+            return ret;
+        }
+        this.AddBoard = function (board) {
+            console.debug("Placing board " + (this.Boards.length + 1) + " (" + board.Length + "mm)" )
+            this.Boards.push(board);
+        };
+        this.Length = function() {
+            var ret = 0;
+            this.Boards.forEach(function(e) {
+                ret += e.Length;
+            });
+            return ret;
+        }
+        this.RowIsDone = function() {
+            return this.RemainingLength() <= 0;
+        }
+        this.RemainingLength = function () {
+            return Math.max(settings.floorW - this.Length(), 0);
+        }
+        this.NeedsLength = function() {
+            return Math.min(this.RemainingLength(), settings.boardL);
+        }
+        this.NeedsMaleBoard = function() {
+            return this.RemainingLength() > settings.boardL;
+        }
+        this.NeedsWholeBoard = function () {
+            return this.Boards.length > 0 && this.NeedsMaleBoard();
+        }
+        this.NeedsFemaleBoard = function() {
+            return this.Boards.length > 0;
+        }
+        this.NeedsFirstBoard = function () {
+            return this.Boards.length === 0;
+        }
+        this.NeedsLastBoard = function () {
+            return this.Boards.length > 0 && this.RemainingLength() < settings.boardL;
+        }
+    }
+    function Floor() {
+        this.BoardRows = [];
+
+        this.AddBoardRow = function () {
+            this.BoardRows.push(new BoardRow);
+            console.debug("Laying row " + this.BoardRows.length);
+        }
+
+        this.AddBoardRow();
+
+            this.Copy = function() {
+            var ret = new Floor();
+            this.BoardRows.forEach(function(e) {ret.BoardRows.push(e.Copy())});
+            return ret;
+        };
+        this.CurrentRow = function() {
+            return this.BoardRows[this.BoardRows.length - 1]
+        }
+        this.PrevRow = function () {
+            return this.BoardRows.length > 1 ? this.BoardRows[this.BoardRows.length - 1] : null;
+        }
+        this.Depth = function () {
+            var ret = 0;
+            this.BoardRows.forEach(function(e) {
+                ret+= e.Width;
+            });
+            return ret;
+        }
+        this.IsFinished = function() {
+            return this.Depth() >= settings.floorD && this.CurrentRow().RowIsDone();
+        };
+        this.NeedsMaleBoard = function() {
+            if(this.IsFinished())
+                return false;
+            return this.CurrentRow().NeedsMaleBoard();
+        }
+        this.NeedsFemaleBoard = function () {
+            if (this.IsFinished())
+                return false;
+            return this.CurrentRow().NeedsFemaleBoard();
+        }
+        this.NeedsWholeBoard = function () {
+            if (this.IsFinished())
+                return false;
+            return this.CurrentRow().NeedsWholeBoard();
+        }
+        this.NeedsFirstBoard = function () {
+            if (this.IsFinished())
+                return false;
+            return this.CurrentRow().NeedsFirstBoard();
+        }
+        this.NeedsLastBoard = function () {
+            if (this.IsFinished())
+                return false;
+            return this.CurrentRow().NeedsLastBoard();
+        }
+        this.BoardFits = function (b) {
+            if (this.IsFinished())
+                return false;
+            if (this.CurrentRow().NeedsWholeBoard() && b.Length < settings.boardL)
+                return false;
+            //if (this.CurrentRow().NeedsFirstBoard() && b.Length > settings.maxLFirstBoard)
+            //    return false;
+            if (!this.CurrentRow().NeedsFirstBoard() && b.Length < this.CurrentRow().NeedsLength())
+                return false;
+            return true;
+        }
+        this.AddBoard = function(board) {
+            this.CurrentRow().AddBoard(board);
+            if (this.CurrentRow().RowIsDone() && !this.IsFinished()) {
+                this.AddBoardRow();
+            }
+        }
+    }
+
+    function FloorLogic() {
+        this.Floor = new Floor();
+        this.MaleBoards = []; //new Boards();
+        this.FemaleBoards = []; //new Boards();
+        this.Wasted = []; //new Boards();
+        this.CopyCurrent = function() {
+            var ret = new FloorLogic();
+            ret.Floor = this.Floor.Copy();
+            this.MaleBoards.forEach(function(e) {ret.MaleBoards.push(e);});
+            this.FemaleBoards.forEach(function(e) {ret.femaleBoards.push(e);});
+            this.Wasted.forEach(function(e) {ret.Wasted.push(e);});
+            return ret;
+        };
+
+        this.NextBoardCandidates = function() {
+            if(this.Floor.IsFinished())
+                return null;
+            var ret = [];
+
+            if (this.Floor.NeedsWholeBoard()) {
+                ret = [this.MaleBoards.find(function (e) { if (e.Length === settings.boardL) return e; return undefined;})];
+            }
+            else if(this.Floor.NeedsMaleBoard()) {
+                this.MaleBoards.forEach(function (e) {
+                    ret.push(e);
+                });
+            }
+            else if(this.Floor.NeedsFemaleBoard()) {
+                this.FemaleBoards.forEach(function (e) {
+                    if (ret.indexOf(e) == -1) {
+                        ret.push(e);
+                    }
+                });
+            }
+            return ret;
+        }
+
+        this.CompleteBoardExists = function () {
+            var exists = false;
+            this.MaleBoards.forEach(function (e) {
+                if(e.Length === settings.boardL) {
+                    exists = true;
+                    return false;
+                }
+            });
+            return exists;
+        }
+
+        this.FindAndPlaceNextBoard = function() {
+            if (!this.CompleteBoardExists()) {
+                this.AddNewBoard();
+            }
+            var candidates = [];
+            var floor = this.Floor;
+            var solver = this;
+            this.NextBoardCandidates().forEach(function(board) {
+                if (floor.NeedsFemaleBoard() && solver.FemaleBoards.indexOf(board) == -1)
+                    return true;
+                if (floor.NeedsMaleBoard() && solver.MaleBoards.indexOf(board) == -1)
+                    return true;
+                if(floor.BoardFits(board)) {
+                    candidates.push(board);
+                }
+            });
+
+            this.PickAndPlaceBoard(candidates);
+        }
+
+        this.LayBoard = function(board) {
+            this.Floor.AddBoard(board);
+            if (this.FemaleBoards.indexOf(board) > -1) {
+                this.FemaleBoards.splice(this.FemaleBoards.indexOf(board), 1);
+            }
+            if (this.MaleBoards.indexOf(board) > -1) {
+                    this.MaleBoards.splice(this.MaleBoards.indexOf(board), 1);
+            }
+        }
+
+        this.PickAndPlaceBoard = function (candidates) {
+            var floor = this.Floor;
+            var solver = this;
+            var board = null;
+            if (floor.CurrentRow().NeedsWholeBoard()) {
+                board = candidates.find(function (b) { if (b.Length === settings.boardL) return b; return undefined; });
+            }
+            if (floor.CurrentRow().NeedsLastBoard()) {
+                candidates = candidates.filter(function (b) { return b.Length >= floor.CurrentRow().NeedsLength() }).sort(function (a, b) { return a > b ? 1 : a == b ? 0 : -1; });
+                board = candidates[0];
+                if (board.Length > floor.CurrentRow().NeedsLength()) {
+                    //Split board:
+                    var newBoard = new Board(board.Length - floor.CurrentRow().NeedsLength());
+                    if (newBoard.Length >= settings.minBoardL) {
+                        solver.MaleBoards.push(newBoard);
+                    }
+                    else {
+                        solver.Wasted.push(newBoard);
+                    }
+                    board.Length = floor.CurrentRow().NeedsLength();
+                }
+            }
+            else if (floor.CurrentRow().NeedsFirstBoard()) {
+                //todo: Logic...
+                candidates = candidates.filter(function (b) { return MatchesPreviousRowsFirstBoard(b)}).sort(function (a, b) { return a > b ? 1 : a == b ? 0 : -1; });
+                board = candidates[0];
+                if (board.Length > settings.maxLFirstBoard) {
+                    var newBoard = new Board(board.Length - settings.maxLFirstBoard);
+                    board.Length = settings.maxLFirstBoard;
+                    if (newBoard.Length >= settings.minBoardL) {
+                        solver.FemaleBoards.push(newBoard);
+                    }
+                    else {
+                        solver.Wasted.push(newBoard);
+                    }
+                }
+            }
+            solver.LayBoard(board);
+            function MatchesPreviousRowsFirstBoard(board) {
+                if(floor.PrevRow() == null)
+                    return true;
+                if (Math.abs(floor.PrevRow().Boards[0].Length - board.Length) < settings.minBoardL) {
+                    return false;
+                }
+                return true;
+            }
+
+        }
+        this.ResolveFloor = function () {
+            while (!this.Floor.IsFinished()) {
+                var nextBoards = this.FindAndPlaceNextBoard();
+                //if (this.Floor.BoardRows.length > 1)
+                //    break;
+            }
+            var allRemaining = new BoardRow(0, this.Wasted);
+            this.FemaleBoards.forEach(function (b) { allRemaining.Boards.push(b);});
+            this.MaleBoards.forEach(function (b) { allRemaining.Boards.push(b); });
+            
+            console.debug(allRemaining.Boards.length + " pieces are wasted, total length : " + allRemaining.Length() + "mm");
+            for (var i = 0; i < allRemaining.Boards.length; i++) {
+                console.debug(allRemaining.Boards[i].Length + "mm");
+            }
+        }
+        
+
+        this.AddNewBoard = function() {
+            var b = new Board();
+            this.MaleBoards.push(b);
+            this.FemaleBoards.push(b);
+            return b;
+        }
+    }
+
+    $(function() {
+        $("#x, #z").on("change", function() {
+            $("#area").val($("#x").val() / 100 * $("#z").val() / 100);
+        });
+
+        $("#calc").on("click", function() {
+            settings.floorW = $("#x").val() * 10;
+            settings.floorD = $("#z").val() * 10;
+            settings.boardW = parseInt($("#bw").val());
+            settings.boardL = parseInt($("#bl").val());
+            settings.minBoardL = parseInt($("#minbl").val()) * 10;
+            var remainder = (settings.floorW / settings.boardL - Math.trunc(settings.floorW / settings.boardL)) * settings.boardL;
+            settings.maxLFirstBoard = settings.boardL;
+            if (remainder < settings.minBoardL)
+                settings.maxLFirstBoard = Math.round(settings.boardL - (settings.minBoardL - remainder));
+            new FloorLogic().ResolveFloor();
+        });
+    });
+</script>
+</body></html>

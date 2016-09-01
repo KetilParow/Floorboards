@@ -1,0 +1,9 @@
+html  {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
+
+.floorbmax-app {width:440px;}
+.floorbmax-app label {display: inline-block; width: 200px;text-align: right;margin-right: 12px;}
+.floorbmax-app input {display: inline-block;min-width: 100px;width: 100px;}
+.floorbmax-app input[type=number] {text-align: right;}
+.floorbmax-app .cat {border-left: none;border-right: none; border-bottom:none; margin-bottom: 12px;}
+.floorbmax-app .cat:last-of-type {border-bottom: 2px groove;} 
+/*.floorbmax-app .app-text {border-bottom: 1px solid}*/
