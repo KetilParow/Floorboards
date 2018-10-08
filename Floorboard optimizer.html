@@ -1,19 +1,22 @@
 
 <!-- saved from url=(0033)http://parowmaskina2/floorboards/ -->
-<html>
+<html lang="en">
     <head>
+        <meta charset="UTF-8"/>
         <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
         <link rel="stylesheet" href="site.css" />
     <title>Floorboard optimizer</title>
     </head>
-    
-    
-    
         
     <body class="floorbmax-app">
         <h1>Floorboard optimizer</h1>
         <p class="app-text">Optimize the usage of floorbard material lenghts</p>
         <div class="inputs">
+            <fieldset class="cat">
+                <legend>Units</legend>                
+                <input type="radio" name="units" id="metric" value="metric" checked="checked"/><label for="metric">Metric</label>
+                <input type="radio" name="units" id="imperial" value = "imperial" disabled="disabled"/><label for="imperial">That other one</label>
+            </fieldset>
             <fieldset class="cat">
                 <legend>Floor dimensions</legend>
                 <label>Floor dim x (cm):</label><input type="number" id="x" step="1" value="320">
@@ -24,13 +27,29 @@
                 <legend>Board dimensions</legend>
                 <label>Width (mm):</label><input type="number" id="bw" min="30" max="500" step="1" value="192">
                 <label>length (mm):</label><input type="number" id="bl" min="500" max="3000" step="1" value="1207">
-                <label>Specified min length(cm):</label><input type="number" id="minbl" min="20" max="50" step="1" value="30">                
+                <label>Specified min length (cm):</label><input type="number" id="minbl" min="20" max="50" step="1" value="30">
+                <label>Sawblade cut width (mm):</label><input type="number" id="sblwidth" min="2" max="6" step="1" value="3">
             </fieldset>
             <input type="button" value="Calculate this!" id="calc">
         </div>
-    
 
 <script>
+
+    var Units = (function() {
+        var _unit = "metric";
+        var metricUnits = ["mm","cm", "m"];
+        var imperialUnits = ["in","ft", "wtf?"];
+        function setUnits(units) {
+            _unit = units;
+        }
+        function getUnit(scale) {
+            return (_unit=="metric" ? metricUnits : imperialUnits)[scale]
+        }
+        return {
+            setUnits,
+            getUnit
+        };
+    }());
 
     var settings = {};
 
