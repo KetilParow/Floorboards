@@ -1,0 +1,165 @@
+
+<html>
+    <head>
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js" integrity="sha256-cCueBR6CsyA4/9szpPfrX3s49M9vUU5BgtiJj06wt/s=" crossorigin="anonymous"></script>
+        <link rel="stylesheet" href="site.css" />
+    <title>Floorboard optimizer</title>
+    </head>
+        
+    <body class="floorbmax-app">
+        <div class="input-pane">
+            <h1>Floorboard optimizer</h1>
+            <div class="inputs">
+                <p class="app-text">Optimize the usage of floorbard material lenghts</p>
+
+            <fieldset class="cat">
+                <legend>Units</legend>                
+                <div class=radio-set>
+                    <input type="radio" name="units" id="metric" value="metric" checked="checked"/><label for="metric">Metric</label>
+                    <input type="radio" name="units" id="imperial" value = "imperial" disabled="disabled"/><label for="imperial">That other one</label>
+                </div>
+            </fieldset>
+                <fieldset class="cat">
+                    <legend>Floor dimensions</legend>
+                <label>Floor dim x (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="x" step="1" value="427">
+                <label>Floor dim z (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="z" step="1" value="250">
+                <label>Area of floor (<span class="unit" data-scale="2">m</span><sup>2</sup>):</label><input data-scale="2" type="number" id="area" readonly="readonly" disabled="disabled" value="7.36">
+                </fieldset>
+                <fieldset class="cat">
+                    <legend>Board dimensions</legend>
+                <label>Width (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="bw" min="30" max="500" step="1" value="130">
+                <label>length (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="bl" min="500" max="3000" step="1" value="1800">
+                <label>Specified min length (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="minbl" min="20" max="50" step="1" value="50">
+                </fieldset>
+            <fieldset class="cat">
+                <legend>Tools</legend>
+                <label>Sawblade cut width (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="sblwidth" min="2" max="6" step="1" value="3">
+            </fieldset>
+
+                <input type="button" value="Calculate this!" id="calc">
+            </div>
+            <div class="floor-pane">
+                <h3>Floor plan</h3>
+                <div class="floor-container"></div>
+                <select id="select-solution"></select>
+            </div>
+        </div>
+        
+        <script>
+
+    var Units = (function() {
+        var _unit = "metric";
+        var metricUnits = ["mm","cm", "m"];
+        var imperialUnits = ["in","ft", "wtf?"];
+        function setUnits(units) {
+            _unit = units;
+        }
+        function getUnit(scale) {
+            return (_unit=="metric" ? metricUnits : imperialUnits)[scale]
+        }
+        return {
+            setUnits,
+            getUnit
+        };
+    }());
+
+            $(function () {
+                scaleFloorContainer();
+            $("#x, #z").on("change", function() {
+                $("#area").val($("#x").val() / 100 * $("#z").val() / 100);
+                scaleFloorContainer();               
+            });
+            function scaleFloorContainer() {
+                $(".floor-container").css("width", $("#x").val() + "px").css("height", $("#z").val() + "px")
+            }
+
+            $("#select-solution").on("change", function () {
+                var selectedId = $(this).find(":selected").val();
+                // $(".floor-container canvas").hide();
+                // $(".floor-container canvas[id=fbl-" + selectedId + "]").show();
+                $(".floor-container .floor").hide();
+                $(".floor-container .floor[id=fbl-" + selectedId + "]").show();
+            });
+
+            function initSettings() {
+                var settings = {};
+                settings.floorW = $("#x").val() * 10;
+                settings.floorD = $("#z").val() * 10;
+                settings.boardW = parseInt($("#bw").val());
+                settings.boardL = parseInt($("#bl").val());
+                settings.minBoardL = parseInt($("#minbl").val()) * 10;
+                
+                return settings;
+            }
+
+
+            $("#calc").on("click", function () {
+                var settings = initSettings();
+                var alternatives = [];
+                $(".floor-pane .floor-container").empty();
+                $("#select-solution").empty();
+                var rowNo = 0;
+                var boardNo = 0;
+                var prevBoardLen = 0;
+                var ctx = null;
+                var $currentFloor = null;
+                if (typeof (worker) == "undefined") {
+                    var worker = new Worker("floorboardsolver.js");
+                    setupWorkerEventListeners(worker);
+                }
+
+                worker.postMessage({ settings: settings, numSteps: 20});
+
+                function setupWorkerEventListeners(worker) {
+                    worker.onmessage = function (event) {
+                        if (event.data.floorResult) {
+                            console.debug("Start length " + event.data.floorResult.startLength + "mm: " + event.data.floorResult.waste.length + "wasted cuts, total length: " + event.data.floorResult.wasteTotalLength + "mm");
+                            alternatives.push(event.data.floorResult);
+                            return;
+                        }
+                        if (event.data.boardNo != undefined) {
+                            boardNo = event.data.boardNo;
+                            if (boardNo === 0 && rowNo === 0) {
+                                $currentFloor.attr("id", "fbl-" + event.data.length);
+                                //$currCanvas.attr("id", "fbl-" + event.data.length);
+                            }
+                            //ctx.fillRect(prevBoardLen / 10 + 1, rowNo * settings.boardW / 10 + 1, event.data.length / 10 - 1, settings.boardW / 10 - 1);
+                            $currentFloor.append("<div title = '" + event.data.length + "' class='board' style=\" width: "+ event.data.length / 10 +"px; height: " + settings.boardW / 10 + "px;\"></div>")
+                            prevBoardLen = prevBoardLen + event.data.length;
+                        }
+                        else if (event.data.rowNo != undefined) {
+                            //console.debug("starting row " + event.data.rowNo);
+                            rowNo = event.data.rowNo;
+                            if (rowNo === 0) {
+                                $(".floor-pane .floor-container").append("<div style = \"width='100%' height='100%'\" class='floor'></div>");
+                                $currentFloor = $(".floor-pane .floor-container").children().last();
+                                
+                                // var $container = $(".floor-pane .floor-container").append("<canvas height='" + $(".floor-container").css("height") + "' width='" + $(".floor-container").css("width") + "' class='floor'></canvas>");
+                                // $currCanvas = $container.children().last();
+                                // ctx = $currCanvas[0].getContext("2d");
+                                // ctx.fillStyle = "#FF0000";
+
+                            }
+                            prevBoardLen = 0;
+                        }
+                        else if (event.data === "finished") {
+                            //console.debug("starting row " + event.data.rowNo);
+                            $(".floor-container canvas").hide();
+                            alternatives.forEach(function (a) {
+                                $("#select-solution").append("<option value=" + a.startLength + ">" +
+                                    "Start length " + a.startLength + "mm: " + a.waste.length + "wasted cuts, total length: " + a.wasteTotalLength + "mm"
+                                    + "</option>")
+                            });
+                            alternatives.length = 0;
+                            return;
+                        }
+                        //Do da drawing!
+                    };
+                }
+
+            });
+
+        });
+    </script>
+</body>
+</html>
