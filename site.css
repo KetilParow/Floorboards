@@ -6,4 +6,6 @@ html  {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
 .floorbmax-app input[type=number] {text-align: right;}
 .floorbmax-app .cat {border-left: none;border-right: none; border-bottom:none; margin-bottom: 12px;}
 .floorbmax-app .cat:last-of-type {border-bottom: 2px groove;} 
+.floorbmax-app .inputs .cat .radio-set label {text-align: left; width: 120px;}
+.floorbmax-app .inputs .cat .radio-set input[type=radio] {min-width: 2em; width: 2em;}
 /*.floorbmax-app .app-text {border-bottom: 1px solid}*/

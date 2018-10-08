@@ -14,21 +14,26 @@
         <div class="inputs">
             <fieldset class="cat">
                 <legend>Units</legend>                
-                <input type="radio" name="units" id="metric" value="metric" checked="checked"/><label for="metric">Metric</label>
-                <input type="radio" name="units" id="imperial" value = "imperial" disabled="disabled"/><label for="imperial">That other one</label>
+                <div class=radio-set>
+                    <input type="radio" name="units" id="metric" value="metric" checked="checked"/><label for="metric">Metric</label>
+                    <input type="radio" name="units" id="imperial" value = "imperial" disabled="disabled"/><label for="imperial">That other one</label>
+                </div>
             </fieldset>
             <fieldset class="cat">
                 <legend>Floor dimensions</legend>
-                <label>Floor dim x (cm):</label><input type="number" id="x" step="1" value="320">
-                <label>Floor dim z (cm):</label><input type="number" id="z" step="1" value="230">
-                <label>Area of floor (m<sup>2</sup>):</label><input type="number" id="area" readonly="readonly" disabled="disabled" value="7.36">
+                <label>Floor dim x (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="x" step="1" value="320">
+                <label>Floor dim z (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="z" step="1" value="230">
+                <label>Area of floor (<span class="unit" data-scale="2">m</span><sup>2</sup>):</label><input data-scale="2" type="number" id="area" readonly="readonly" disabled="disabled" value="7.36">
             </fieldset>
             <fieldset class="cat">
                 <legend>Board dimensions</legend>
-                <label>Width (mm):</label><input type="number" id="bw" min="30" max="500" step="1" value="192">
-                <label>length (mm):</label><input type="number" id="bl" min="500" max="3000" step="1" value="1207">
-                <label>Specified min length (cm):</label><input type="number" id="minbl" min="20" max="50" step="1" value="30">
-                <label>Sawblade cut width (mm):</label><input type="number" id="sblwidth" min="2" max="6" step="1" value="3">
+                <label>Width (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="bw" min="30" max="500" step="1" value="192">
+                <label>length (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="bl" min="500" max="3000" step="1" value="1207">
+                <label>Specified min length (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="minbl" min="20" max="50" step="1" value="30">
+            </fieldset>
+            <fieldset class="cat">
+                <legend>Tools</legend>
+                <label>Sawblade cut width (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="sblwidth" min="2" max="6" step="1" value="3">
             </fieldset>
             <input type="button" value="Calculate this!" id="calc">
         </div>
