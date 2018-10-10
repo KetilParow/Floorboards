@@ -11,13 +11,38 @@ html  {font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
 .input-pane {display: inline;}
 .floor-pane { display: inline-block; border:outset 2px grey; margin-left:12px;}
 .floor-pane h3 {margin-top:4px;margin-bottom: 6px;}
-.floor-pane .floor-container {position: relative; margin-left:4px; margin-right:4px;margin-bottom:4px;}
+.floor-pane .floor-container {position: relative; margin-left:4px; margin-right:4px;margin-bottom:10px;margin-top:10px;}
 .floor-pane .floor-container .floor { 
     display:none;     
     overflow-y: hidden;
     overflow-x: hidden;
-    background: whitesmoke;position:absolute; 
+    background: whitesmoke;
+    position: absolute; 
     top: 0px; 
     bottom: 0px; }
 .floor-pane .floor-container .floor .board {display:inline-block; border: 1px solid gray; margin:-1px; background: beige}
+.floor-pane .head {float:left;}
+.floorbmax-app .floor-pane .fp-scale { 
+    text-align: right;
+    margin-left: 120px;
+}
+
+.floorbmax-app label.lbl-small {width: 80px;}
+.floorbmax-app #scale {
+    min-width:50px;
+    width:50px;
+} 
+ 
+.floorbmax-app #scale::-webkit-inner-spin-button
+{
+    -webkit-appearance: none;
+    cursor:pointer;
+    display:block;
+    width:8px;
+    color: #333;
+    text-align:center;
+    position:relative; 
+    margin:0
+}
+
 /*.floorbmax-app .app-text {border-bottom: 1px solid}*/

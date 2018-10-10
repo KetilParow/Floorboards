@@ -3,40 +3,52 @@ var incr = 0.0;
 
 this.onmessage = function (message) {
 
-    message.data.settings.maxLFirstBoard = message.data.settings.boardL;
-    var remainder = (message.data.settings.floorW / message.data.settings.boardL - Math.trunc(message.data.settings.floorW / message.data.settings.boardL)) * message.data.settings.boardL;
+    //message.data.settings.maxLFirstBoard = message.data.settings.boardL;
+    //var remainder = (message.data.settings.floorW / message.data.settings.boardL - Math.trunc(message.data.settings.floorW / message.data.settings.boardL)) * message.data.settings.boardL;
 
     //if (remainder < settings.minBoardL)
-    message.data.settings.maxLFirstBoard = Math.round(Math.min(remainder, message.data.settings.boardL - (message.data.settings.minBoardL -  remainder)));
+    //message.data.settings.maxLFirstBoard = Math.round(Math.min(remainder, message.data.settings.boardL - (message.data.settings.minBoardL -  remainder)));
 
     if (message.data.numSteps) {
 
         runIncrements(message);
     }
     else if (message.data.startLength){
-
     }
     
 }
 
-function runIncrements(message) {
-    settings = message.data.settings;
-    incr = Math.trunc(((settings.maxLFirstBoard - settings.minBoardL) / (message.data.numSteps * 10)) + 0.5) * 10;
-    var alternatives = [];
-    self.postMessage("Starting");
-    for (var l = settings.minBoardL; l < settings.maxLFirstBoard; l += incr) {
+function lengthAtEndBoard(startBoardLen, settings) {
+        var remainder = (settings.floorW - startBoardLen) / settings.boardL - Math.trunc((settings.floorW - startBoardLen) / settings.boardL);
+        return remainder == 0? settings.boardL : remainder * settings.boardL;
+    }
 
-        if (l + incr > settings.maxLFirstBoard)
-            l = settings.maxLFirstBoard;
+function runIncrements(message) {
+
+    settings = message.data.settings;
+    
+
+    //incr = Math.trunc(((settings.maxLFirstBoard - settings.minBoardL) / (message.data.numSteps * 10)) + 0.5) * 10;
+    //incr = Math.trunc(((settings.boardL - settings.minBoardL) / (message.data.numSteps * 10)) + 0.5) * 10;
+    incr = 10;
+    //var alternatives = [];
+    self.postMessage("Starting");
+    for (var l = settings.minBoardL; l <= settings.boardL /*- settings.minBoardL*/; l += incr) {
+
+        if(lengthAtEndBoard(l,settings) < settings.minBoardL) {
+            continue;
+        }
 
         var logic = new FloorLogic();
-        if (l < settings.maxLFirstBoard) {
+
+        if (l < settings.boardL) {
             logic.CutThisBoard(logic.AddNewBoard(), l, logic.FemaleBoards);
+            logic.LayBoard(logic.MaleBoards[0]);
         }
 
         logic.ResolveFloor();
         var allRemaining = new BoardRow(0, logic.Wasted);
-        alternative = { startLength: l };
+        //alternative = { startLength: l };
         //alternatives.push(alternative)
 
         self.postMessage({ floorResult: {startLength: l, waste: logic.Wasted, wasteLength: allRemaining.Boards.length, wasteTotalLength: allRemaining.Length()}});
@@ -266,7 +278,7 @@ function FloorLogic() {
     }
 
     this.CutThisBoard = function (board, newLength, typeOfNewBoard) {
-        var newBoard = new Board(board.Length - newLength);
+        var newBoard = new Board(board.Length - newLength - settings.sblWidth);
         board.Length = newLength;
         if (typeOfNewBoard != null && newBoard.Length >= settings.minBoardL) {
             typeOfNewBoard.push(newBoard);
@@ -285,13 +297,20 @@ function FloorLogic() {
             board = candidates.find(function (b) { if (b.Length === settings.boardL) return b; return undefined; });
         }
         else if (floor.CurrentRow().NeedsFirstBoard()) {
-            candidates = candidates.filter(function (b) { return MatchesPreviousRowsFirstBoard(b) }).sort(function (a, b) { return a.Length > b.Length ? 1 : a.Length == b.Length ? 0 : -1; });
-            board = candidates[0];
-            var lBoard = board.Length;
-            if (lBoard > settings.maxLFirstBoard) {
-                //Must cut, or we end up with a tiny piece at end of row
-                lBoard = settings.maxLFirstBoard;
+            if(floor.PrevRow() == null) {
+                
             }
+            candidates = candidates
+                .filter(function (b) { return MatchesPreviousRowsFirstBoard(b) })
+                .sort(function (a, b) { return a.Length > b.Length ? 1 : a.Length == b.Length ? 0 : -1; })
+                //.sort(function (a, b) { return lengthAtEndBoard(a.Length,settings) > lengthAtEndBoard(b.Length,settings) ? 1 : lengthAtEndBoard(a.Length,settings) == lengthAtEndBoard(b.Length,settings) ? 0 : -1; });
+            board = candidates
+                .find(function(a) {return a.Length >= settings.minBoardL && lengthAtEndBoard(a.Length,settings) >= settings.minBoardL;});
+            var lBoard = board.Length;
+            // if (lengthAtEndBoard(lBoard,settings) < settings.minBoardL) {
+            //     //Must cut, or we end up with a tiny piece at end of row
+            //     lBoard = settings.maxLFirstBoard;
+            // }
             if (floor.PrevRow() != null && Math.abs(lBoard - floor.PrevRow().Boards[0].Length) < settings.minBoardL) {
                 //Must cut, or we end up with joint right next to joint in previous row
                 lBoard = floor.PrevRow().Boards[0].Length - settings.minBoardL;
