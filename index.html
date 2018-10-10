@@ -23,7 +23,7 @@
                     <legend>Floor dimensions</legend>
                     <label>Floor dim x (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="x" step="1" value="427">
                     <label>Floor dim z (<span class="unit" data-scale="1">cm</span>):</label><input data-scale="1" type="number" id="z" step="1" value="250">
-                    <label>Area of floor (<span class="unit" data-scale="2">m</span><sup>2</sup>):</label><input data-scale="2" type="number" id="area" readonly="readonly" disabled="disabled" value="7.36">
+                    <label>Area of floor (<span class="unit" data-scale="2">m</span><sup>2</sup>):</label><input class="isnumber" data-scale="2" type="text" id="area" readonly="readonly" disabled="disabled" value="7.36">
                 </fieldset>
                 <fieldset class="cat">
                     <legend>Board dimensions</legend>
@@ -33,8 +33,7 @@
                 </fieldset>
                 <fieldset class="cat">
                     <legend>Tools</legend>
-                    <label>Sawblade cut width (<span class="unit" data-scale="0">mm</span>):</label>
-                    <input data-scale="0" type="number" id="sbl-width" min="0" max="6" step="1" value="3">
+                    <label>Sawblade cut width (<span class="unit" data-scale="0">mm</span>):</label><input data-scale="0" type="number" id="sbl-width" min="0" max="6" step="1" value="3">
                 </fieldset>
                 <input type="button" value="Calculate this!" id="calc">
             </div>
@@ -46,13 +45,22 @@
         </div>
         
     <script>
+        if(!Math.round2) {
+            Math.round2 = function(number) {
+                return Math.trunc((number + 0.0000049) * 100) / 100;  
+            }
+        }
         var Units = (function() {
             var _unit = "metric";
             var metricUnits = ["mm","cm", "m"];
-            var imperialUnits = ["in","ft", "wtf?"];
+            var imperialUnits = ["in/64,in,ft"];
+            var metric2impFactors = [0.0393700787 * 64,0.393700787, 3.2808399];
+            var imp2metricFactors = [1 / (0.0393700787 * 64), 1 / 0.393700787, 1 / 3.2808399]
+            
             function setUnits(units) {
                 _unit = units;
             }
+
             function getUnit(scale) {
                 return (_unit==="metric" ? metricUnits : imperialUnits)[scale]
             }
@@ -61,6 +69,14 @@
                     return Math.pow(10, scale2 - scale1);
                 }
             }
+            
+            function Imperial2Metric(number, scale) {
+                return number * metric2impFactors[scale];
+            }
+            function Metric2Imperial(number, scale) {
+                return number * metric2impFactors[scale];
+            }
+
             return {
                 setUnits,
                 getUnit,
@@ -80,12 +96,16 @@
             scaleFloorContainer();
 
             $("#x, #z").on("change", function() {
-                $("#area").val($("#x").val() / 100 * $("#z").val() / 100);
+                var $this = $(this);
+                $("#area").val(Math.round2($("#x").val() / 100 * $("#z").val() / 100));
+                $this.data("enteredValue", $this.val());
                 scaleFloorContainer();               
             });
 
             function scaleFloorContainer() {
-                $(".floor-container").css("width", $("#x").val() * $("#scale").val() + "px").css("height", $("#z").val() * $("#scale").val() + "px")
+                $(".floor-container").css("width", $("#x").val() * $("#scale").val() + "px").css("height", $("#z").val() * $("#scale").val() + "px");
+                $(".floor-container").empty();
+                $("#select-solution").empty();
             }
 
             $("#scale").on("change", function() {
@@ -140,13 +160,14 @@
                             return;
                         }
                         if (event.data.boardNo != undefined) {
+                            let scale = 1.0 *  $("#scale").val()
                             boardNo = event.data.boardNo;
                             if (boardNo === 0 && rowNo === 0) {
                                 $currentFloor.attr("id", "fbl-" + event.data.length);
                                 //$currCanvas.attr("id", "fbl-" + event.data.length);
                             }
                             //ctx.fillRect(prevBoardLen / 10 + 1, rowNo * settings.boardW / 10 + 1, event.data.length / 10 - 1, settings.boardW / 10 - 1);
-                            $currentFloor.append("<div title = '" + event.data.length + "' class='board' style=\" width: "+ event.data.length / 10 +"px; height: " + settings.boardW / 10 + "px;\"></div>")
+                            $currentFloor.append("<div title = '" + event.data.length + "' class='board' style=\" width: "+ (event.data.length  / 10) * scale +"px; height: " + (settings.boardW / 10) * scale + "px;\"></div>")
                             prevBoardLen = prevBoardLen + event.data.length;
                         }
                         else if (event.data.rowNo != undefined) {
