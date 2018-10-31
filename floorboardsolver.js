@@ -20,7 +20,7 @@ this.onmessage = function (message) {
 
 function lengthAtEndBoard(startBoardLen, settings) {
         var remainder = (settings.floorW - startBoardLen) / settings.boardL - Math.trunc((settings.floorW - startBoardLen) / settings.boardL);
-        return remainder == 0? settings.boardL : remainder * settings.boardL;
+        return remainder == 0? settings.boardL : Math.round(remainder * settings.boardL,0);
     }
 
 function runIncrements(message) {
@@ -34,6 +34,7 @@ function runIncrements(message) {
     //var alternatives = [];
     self.postMessage("Starting");
     for (var l = settings.minBoardL; l <= settings.boardL /*- settings.minBoardL*/; l += incr) {
+
         if(lengthAtEndBoard(l,settings) < settings.minBoardL) {
             continue;
         }
@@ -296,15 +297,21 @@ function FloorLogic() {
             board = candidates.find(function (b) { if (b.Length === settings.boardL) return b; return undefined; });
         }
         else if (floor.CurrentRow().NeedsFirstBoard()) {
-            if(floor.PrevRow() == null) {
-                
-            }
+            // if(floor.PrevRow() == null) {
+            //     candidates = candidates
+            //         .filter(function (b) { return MatchesPreviousRowsFirstBoard(b) })    
+            // }
             candidates = candidates
                 .filter(function (b) { return MatchesPreviousRowsFirstBoard(b) })
                 .sort(function (a, b) { return a.Length > b.Length ? 1 : a.Length == b.Length ? 0 : -1; })
                 //.sort(function (a, b) { return lengthAtEndBoard(a.Length,settings) > lengthAtEndBoard(b.Length,settings) ? 1 : lengthAtEndBoard(a.Length,settings) == lengthAtEndBoard(b.Length,settings) ? 0 : -1; });
             board = candidates
                 .find(function(a) {return a.Length >= settings.minBoardL && lengthAtEndBoard(a.Length,settings) >= settings.minBoardL;});
+            
+            if(!board) {
+                board = candidates[0];
+            }
+
             var lBoard = board.Length;
             // if (lengthAtEndBoard(lBoard,settings) < settings.minBoardL) {
             //     //Must cut, or we end up with a tiny piece at end of row
@@ -313,6 +320,10 @@ function FloorLogic() {
             if (floor.PrevRow() != null && Math.abs(lBoard - floor.PrevRow().Boards[0].Length) < settings.minBoardL) {
                 //Must cut, or we end up with joint right next to joint in previous row
                 lBoard = floor.PrevRow().Boards[0].Length - settings.minBoardL;
+            }
+            if (lengthAtEndBoard(lBoard,settings) < settings.minBoardL) {
+                //Must cut, or we end up with too short board at end of row
+                lBoard = lBoard - settings.minBoardL + lengthAtEndBoard(lBoard,settings);
             }
             if (lBoard < board.Length) {
                 solver.CutThisBoard(board, lBoard, board.Length == settings.boardL ? solver.FemaleBoards : null);
@@ -333,7 +344,14 @@ function FloorLogic() {
         function MatchesPreviousRowsFirstBoard(board) {
             if (floor.PrevRow() == null)
                 return true;
+            if (board.Length === settings.boardL) {
+                return true;
+            }
             if (floor.PrevRow().Boards[0].Length < 2 * settings.minBoardL && board.Length < 2 * settings.minBoardL) {
+                return false;
+            }
+            if (Math.abs(board.Length - floor.PrevRow().Boards[0].Length) < settings.minBoardL && 
+                floor.PrevRow().Boards[0].Length + settings.minBoardL > board.Length) {
                 return false;
             }
             return true;
