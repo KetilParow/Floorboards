@@ -34,7 +34,6 @@ function runIncrements(message) {
     //var alternatives = [];
     self.postMessage("Starting");
     for (var l = settings.minBoardL; l <= settings.boardL /*- settings.minBoardL*/; l += incr) {
-
         if(lengthAtEndBoard(l,settings) < settings.minBoardL) {
             continue;
         }
